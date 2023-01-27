@@ -11,26 +11,32 @@ import googleapiclient.discovery
 import googleapiclient.errors
 
 class Video:
-    def __init__(self, url):
-        self.url = url
-
-        self.get_publish_date()
-        self.get_likes_counter()
-        self.get_comments_counter()
-        self.get_views_counter()
-        self.get_tags()
+    def __init__(self, video_http_data):
+        self.title = video_http_data['items'][0]['snippet']['title']
+        self.publish_date = video_http_data['items'][0]['snippet']['publishedAt']
+        self.like_count = video_http_data['items'][0]['statistics']['likeCount']
+        self.comment_count = video_http_data['items'][0]['statistics']['commentCount']
+        self.view_count = video_http_data['items'][0]['statistics']['viewCount']
+        
+        try:
+            self.tags = [video_http_data['items'][0]['snippet']['tags']]
+        except:
+            self.tags = []
     
+    def get_title(self):
+        return self.title
+
     def get_publish_date(self):
-        self.publish_date = 0
+        return self.publish_date
 
-    def get_likes_counter(self):
-        self.likes = 0
+    def get_like_count(self):
+        return self.like_count
     
-    def get_comments_counter(self):
-        self.comments = 0
+    def get_comment_count(self):
+        return self.comment_count
     
-    def get_views_counter(self):
-        self.views = 0
+    def get_view_count(self):
+        return self.view_count
     
     def get_tags(self):
         self.tags = []
@@ -48,8 +54,37 @@ def get_channel_id(youtube, channel_username):
     
     return response['items'][0]['id']
 
+def get_videos_ids_from_channel(youtube, channle_id, limit):
+    request = youtube.search().list(
+        part="snippet",
+        channelId=channle_id,
+        maxResults=limit,
+        order="date"
+    )
+
+    response = request.execute()
+
+    result = []
+    for i in range(limit):
+        result.append(response['items'][i]['id']['videoId'])
+
+    return result
+
+def get_videos_data(youtube, videos_ids):
+    result = []
+
+    for video_id in videos_ids:
+        request = youtube.videos().list(
+            part="snippet, statistics",
+            id=video_id
+        )
+        
+        response = request.execute()
+        result.append(Video(response))
+    return result
+
 def main():
-    channel_username = input("Type the username for the channle you want to analyze:")
+    channel_username = input("Type the username for the channle you want to analyze: ")
 
     api_service_name = "youtube"
     api_version = "v3"
@@ -61,6 +96,20 @@ def main():
         print("Error: The username you have typed is invalid.")
         return
     
-    print(channel_id)
-    
+    number_of_videos = int(input("Enter the number of videos you want to analye(from the newest uploded): "))
+
+    videos_ids = get_videos_ids_from_channel(youtube, channel_id, number_of_videos)
+
+    videos_data = get_videos_data(youtube, videos_ids)
+
+    for video_data in videos_data:
+        print("---------------------------")
+        print("Title: " + video_data.get_title())
+        print("Publish date: " + video_data.get_publish_date())
+        print("Views: " + video_data.get_view_count())
+        print("Likes: " + video_data.get_like_count())
+        print("Comments: " + video_data.get_comment_count())
+        print("---------------------------")
+
+    return
 main()
