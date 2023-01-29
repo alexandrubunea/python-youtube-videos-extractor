@@ -1,4 +1,4 @@
 local_env
 api_keys.py
 __pycache__
-output/*.xslx
+output/*.xlsx
