@@ -1,4 +1,4 @@
-# Python Video Analyzer
+# Python Video Extractor
 
 1. To run the program first install with pip the file "requirments.txt"
 2. Run main.py file and enjoy
