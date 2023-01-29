@@ -1,3 +1,4 @@
 local_env
 api_keys.py
-output/*
+__pycache__
+output/*.xslx
