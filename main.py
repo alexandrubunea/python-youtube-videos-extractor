@@ -22,7 +22,7 @@ class Video:
         self.view_count = video_http_data['items'][0]['statistics']['viewCount']
         
         try:
-            self.tags = [video_http_data['items'][0]['snippet']['tags']]
+            self.tags = video_http_data['items'][0]['snippet']['tags']
         except:
             self.tags = []
     
@@ -87,8 +87,23 @@ def get_videos_data(youtube, videos_ids):
         result.append(Video(response))
     return result
 
+def alternate_get_channel_id(youtube, channel_username):
+    request = youtube.search().list(
+        part="snippet",
+        q=channel_username,
+        maxResults=1,
+        type="channel"
+    )
+    response = request.execute()
+    
+    if response['pageInfo']['totalResults'] == 0:
+        return "invalid"
+
+    return response['items'][0]['snippet']['channelId']
+
 def create_excel_file(channel_username, videos_data):
-    file_name = channel_username + "_" + time.strftime("%Y_%m_%d_%H_%M_%S") + ".xlsx"
+    channel_username_no_spaces = channel_username.replace(" ", "_")
+    file_name = channel_username_no_spaces + "_" + time.strftime("%Y_%m_%d_%H_%M_%S") + ".xlsx"
 
     workbook = xlsxwriter.Workbook('output/' + file_name)
     worksheet = workbook.add_worksheet("Sheet1")
@@ -110,6 +125,14 @@ def create_excel_file(channel_username, videos_data):
         worksheet.write(index, 4, video_data.get_like_count())
         worksheet.write(index, 5, video_data.get_comment_count())
 
+        tags = video_data.get_tags()
+        formated_tags = ""
+        for tag in tags:
+            formated_tags += str(tag) + ", "
+        formated_tags = formated_tags[:-2]
+
+        worksheet.write(index, 6, formated_tags)
+
         index += 1
     
     workbook.close()
@@ -124,8 +147,11 @@ def main():
 
     channel_id = get_channel_id(youtube, channel_username)
     if channel_id == "invalid":
-        print("Error: The username you have typed is invalid.")
-        return
+        channel_id = alternate_get_channel_id(youtube, channel_username)
+        
+        if channel_id == "invalid":
+            print("Error: The username you have typed is invalid.")
+            return
     
     number_of_videos = int(input("Enter the number of videos you want to analye(from the newest uploded)(Limit: 50): "))
     if number_of_videos > 50:
