@@ -10,6 +10,9 @@ import api_keys # You must create this file and place there a signle variable na
 import googleapiclient.discovery
 import googleapiclient.errors
 
+import xlsxwriter
+import time
+
 class Video:
     def __init__(self, video_http_data):
         self.title = video_http_data['items'][0]['snippet']['title']
@@ -39,7 +42,7 @@ class Video:
         return self.view_count
     
     def get_tags(self):
-        self.tags = []
+        return self.tags
 
 def get_channel_id(youtube, channel_username):
     request = youtube.channels().list(
@@ -59,14 +62,15 @@ def get_videos_ids_from_channel(youtube, channle_id, limit):
         part="snippet",
         channelId=channle_id,
         maxResults=limit,
-        order="date"
+        order="date",
+        type="video"
     )
 
     response = request.execute()
 
     result = []
-    for i in range(limit):
-        result.append(response['items'][i]['id']['videoId'])
+    for video in response['items']:
+        result.append(video['id']['videoId'])
 
     return result
 
@@ -83,6 +87,33 @@ def get_videos_data(youtube, videos_ids):
         result.append(Video(response))
     return result
 
+def create_excel_file(channel_username, videos_data):
+    file_name = channel_username + "_" + time.strftime("%Y_%m_%d_%H_%M_%S") + ".xlsx"
+
+    workbook = xlsxwriter.Workbook('output/' + file_name)
+    worksheet = workbook.add_worksheet("Sheet1")
+    
+    worksheet.write(0, 0, "#")
+    worksheet.write(0, 1, "Title")
+    worksheet.write(0, 2, "Publish Date")
+    worksheet.write(0, 3, "Views")
+    worksheet.write(0, 4, "Likes")
+    worksheet.write(0, 5, "Comments")
+    worksheet.write(0, 6, "Tags")
+
+    index = 1
+    for video_data in videos_data:
+        worksheet.write(index, 0, index)
+        worksheet.write(index, 1, video_data.get_title())
+        worksheet.write(index, 2, video_data.get_publish_date())
+        worksheet.write(index, 3, video_data.get_view_count())
+        worksheet.write(index, 4, video_data.get_like_count())
+        worksheet.write(index, 5, video_data.get_comment_count())
+
+        index += 1
+    
+    workbook.close()
+
 def main():
     channel_username = input("Type the username for the channle you want to analyze: ")
 
@@ -96,20 +127,17 @@ def main():
         print("Error: The username you have typed is invalid.")
         return
     
-    number_of_videos = int(input("Enter the number of videos you want to analye(from the newest uploded): "))
+    number_of_videos = int(input("Enter the number of videos you want to analye(from the newest uploded)(Limit: 50): "))
+    if number_of_videos > 50:
+        number_of_videos = 50
+    elif number_of_videos < 0:
+        number_of_videos = 0
 
     videos_ids = get_videos_ids_from_channel(youtube, channel_id, number_of_videos)
 
     videos_data = get_videos_data(youtube, videos_ids)
 
-    for video_data in videos_data:
-        print("---------------------------")
-        print("Title: " + video_data.get_title())
-        print("Publish date: " + video_data.get_publish_date())
-        print("Views: " + video_data.get_view_count())
-        print("Likes: " + video_data.get_like_count())
-        print("Comments: " + video_data.get_comment_count())
-        print("---------------------------")
+    create_excel_file(channel_username, videos_data)
 
     return
 main()
